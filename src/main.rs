@@ -37,7 +37,7 @@ fn cli() -> Command {
             Arg::new("panel")
                 .long("panel")
                 .short('p')
-                .help("Panel config (rows:columns:length:width)"),
+                .help("Panel config (rows:columns:width:length)"),
         )
         .arg(
             Arg::new("explode")
@@ -68,8 +68,8 @@ fn parse_panel(panel: &str) -> Result<PanelConfig, String> {
     } else {
         let rows = params[0].parse().map_err(|_| "Invalid panel rows")?;
         let columns = params[1].parse().map_err(|_| "Invalid panel columns")?;
-        let length = params[2].parse().map_err(|_| "Invalid panel unit length")?;
-        let width = params[3].parse().map_err(|_| "Invalid panel unit width")?;
+        let width = params[2].parse().map_err(|_| "Invalid panel unit width")?;
+        let length = params[3].parse().map_err(|_| "Invalid panel unit length")?;
 
         if columns < 2 || rows < 2 {
             Err("Invalid panel config".into())

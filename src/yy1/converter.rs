@@ -25,18 +25,19 @@ impl YY1Converter {
         let mut reader = csv::Reader::from_reader(File::open(input_path)?);
         let kicad_records: Result<Vec<KiCadRecord>, csv::Error> = reader.deserialize().collect();
 
-        let feeder_config = match feeder_config_path {
-            Some(path) => {
+        let feeder_config: Option<HashMap<(String, String), FeederConfig>> =
+            if let Some(path) = feeder_config_path {
                 let mut reader = csv::Reader::from_reader(File::open(path)?);
                 let records: Result<Vec<FeederConfig>, csv::Error> = reader.deserialize().collect();
-                records
+                let config = records
                     .map_err(|err| io::Error::other(err.to_string()))?
                     .into_iter()
                     .map(|cfg| ((cfg.value.clone(), cfg.package.clone()), cfg))
-                    .collect()
-            }
-            None => HashMap::new(),
-        };
+                    .collect();
+                Some(config)
+            } else {
+                None
+            };
 
         let nozzles_config = match nozzles_config_path {
             Some(path) => {
@@ -70,41 +71,45 @@ impl YY1Converter {
                         comp.package = re.replace(&comp.package, *replace).into();
                     }
                 }
-                let comp_kind = (comp.value.clone(), comp.package.clone());
+
                 if comp.value == "Fiducial" {
                     comp.skip = 1;
-                } else if let Some(feeder_cfg) = feeder_config.get(&comp_kind) {
-                    comp.feeder = feeder_cfg.feeder;
-                    comp.pick_height = feeder_cfg.pick_height;
-                    comp.place_height = feeder_cfg.place_height;
-                    comp.mount_speed = feeder_cfg.mount_speed;
-                    comp.rotation = (comp.rotation + feeder_cfg.rotation) % 180.0;
-                    comp.mode = feeder_cfg.mode;
+                }
 
-                    for nozzle_config in &nozzles_config {
-                        if nozzle_config
-                            .map(|cfg| cfg.contains(feeder_cfg.nozzle))
-                            .unwrap_or(false)
-                        {
-                            comp.nozzle = Some(feeder_cfg.nozzle);
-                            break;
+                if let Some(feeder_config) = &feeder_config {
+                    let comp_kind = (comp.value.clone(), comp.package.clone());
+                    if let Some(feeder) = feeder_config.get(&comp_kind) {
+                        comp.feeder = feeder.feeder;
+                        comp.pick_height = feeder.pick_height;
+                        comp.place_height = feeder.place_height;
+                        comp.mount_speed = feeder.mount_speed;
+                        comp.rotation = (comp.rotation + feeder.rotation) % 180.0;
+                        comp.mode = feeder.mode;
+                        for nozzle_config in &nozzles_config {
+                            if nozzle_config
+                                .map(|cfg| cfg.contains(feeder.nozzle))
+                                .unwrap_or(false)
+                            {
+                                comp.nozzle = Some(feeder.nozzle);
+                                break;
+                            }
                         }
-                    }
-
-                    if comp.nozzle.is_none() && nozzles_config.iter().any(Option::is_some) {
+                        if comp.nozzle.is_none() && nozzles_config.iter().any(Option::is_some) {
+                            comp.skip = 1;
+                            eprintln!(
+                                "Warning: Nozzle {:?} not found for component: {} {}. Skipping...",
+                                feeder.nozzle, comp.value, comp.package
+                            );
+                        }
+                    } else if comp.value != "Fiducial" {
                         comp.skip = 1;
                         eprintln!(
-                            "Warning: Nozzle {:?} not found for component: {} {}. Skipping...",
-                            feeder_cfg.nozzle, comp.value, comp.package
+                            "Warning: Feeder not found for component: {} - {}. Skipping...",
+                            comp.value, comp.package
                         );
                     }
-                } else {
-                    comp.skip = 1;
-                    eprintln!(
-                        "Warning: Feeder not found for component: {} - {}. Skipping...",
-                        comp.value, comp.package
-                    );
                 }
+
                 comp
             })
             .collect();
@@ -167,6 +172,8 @@ impl YY1Converter {
                 }) {
                     step.components.push(comp.clone());
                 }
+            } else if let Some(step) = steps.first_mut() {
+                step.components.push(comp.clone());
             }
         }
 

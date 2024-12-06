@@ -2,7 +2,7 @@
 
 cargo run -- \
   example/input.csv \
-  example/output.csv \
+  example/output/output.csv \
   --fiducial FID2 \
   -f example/feeder_config.csv \
   -n example/nozzle_config.csv \
