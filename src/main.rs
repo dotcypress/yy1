@@ -24,6 +24,7 @@ fn cli() -> Command {
             Arg::new("nozzle_config")
                 .long("nozzle")
                 .short('n')
+                .requires("feeder_config")
                 .help("Nozzle config file"),
         )
         .arg(

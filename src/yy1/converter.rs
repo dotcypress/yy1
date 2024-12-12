@@ -57,6 +57,8 @@ impl YY1Converter {
                 Regex::new(r"([VWDLTQ]?)F([NP]?)-([0-9]+)[-_].+").unwrap(),
                 r"${1}F${2}-${3}",
             ),
+            (Regex::new(r"(.+)GA-([0-9]+)[_-].+").unwrap(), r"${1}GA-${2}"),
+            (Regex::new(r"(.+)SO([DP]?)-([0-9]+)[_-]*.*").unwrap(), r"${1}SO${2}-${3}"),
             (Regex::new(r"LED_([0-9]+)_.+").unwrap(), r"${1}"),
             (Regex::new(r"[RCLD]_([0-9]+)_.+").unwrap(), r"${1}"),
         ];
@@ -264,8 +266,8 @@ impl PickAndPlaceStep {
     pub fn assign_nozzles(&mut self) {
         if let Some(nozzle_config) = self.nozzle_config {
             self.components.sort_by(|comp1, comp2| {
-                let nozzle1 = comp1.nozzle.unwrap();
-                let nozzle2 = comp2.nozzle.unwrap();
+                let nozzle1 = comp1.nozzle.unwrap_or(Nozzle::CN040);
+                let nozzle2 = comp2.nozzle.unwrap_or(Nozzle::CN040);
                 match nozzle_config
                     .is_active(nozzle2)
                     .cmp(&nozzle_config.is_active(nozzle1))
