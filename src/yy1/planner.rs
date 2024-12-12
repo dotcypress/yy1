@@ -163,7 +163,7 @@ impl Planner {
                 .nozzle_spans
                 .get(&active_nozzle.unwrap())
                 .map(|ttl| *ttl < self.component_index)
-                .unwrap_or_default();
+                .unwrap_or(true);
 
         if nozzle_expired && self.config.find_nozzle_station(nozzle).is_some() {
             let nozzle_change = self
