@@ -2,6 +2,7 @@ use converter::YY1Converter;
 use std::io;
 
 mod converter;
+mod package;
 mod planner;
 
 #[derive(Clone, Debug, serde::Serialize)]
@@ -257,24 +258,93 @@ impl Default for NozzleChange {
     }
 }
 
-pub fn convert(
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct PackageMap {
+    #[serde(rename = "From")]
+    from: String,
+
+    #[serde(rename = "To")]
+    to: String,
+}
+impl PackageMap {
+    fn rename(&self, package: &str) -> Option<String> {
+        if self.from == package {
+            Some(self.to.clone())
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Config {
     input_path: String,
     output_path: String,
-    feeder_config_path: Option<&String>,
-    nozzle_config_path: Option<&String>,
-    panel: Option<PanelConfig>,
-    offset: Option<(f32, f32)>,
+    panel: PanelConfig,
+    offset: (f32, f32),
+    feeder_config_path: Option<String>,
+    nozzle_config_path: Option<String>,
+    package_map_path: Option<String>,
     fiducial_ref: Option<String>,
-) -> io::Result<()> {
-    let mut converter = YY1Converter::try_new(
-        input_path,
-        output_path,
-        panel.unwrap_or_default(),
-        fiducial_ref,
-        feeder_config_path,
-        nozzle_config_path,
-    )?;
-    converter.apply_offset(offset.unwrap_or((0.0, 0.0)));
+}
+
+impl Config {
+    pub fn new(input_path: String, output_path: String) -> Self {
+        Self {
+            input_path,
+            output_path,
+            feeder_config_path: None,
+            nozzle_config_path: None,
+            package_map_path: None,
+            panel: PanelConfig::default(),
+            offset: (0.0, 0.0),
+            fiducial_ref: None,
+        }
+    }
+
+    pub fn panel(self, val: PanelConfig) -> Self {
+        Self { panel: val, ..self }
+    }
+
+    pub fn offset(self, val: (f32, f32)) -> Self {
+        Self {
+            offset: val,
+            ..self
+        }
+    }
+
+    pub fn feeder_config_path(self, val: Option<String>) -> Self {
+        Self {
+            feeder_config_path: val,
+            ..self
+        }
+    }
+
+    pub fn nozzle_config_path(self, val: Option<String>) -> Self {
+        Self {
+            nozzle_config_path: val,
+            ..self
+        }
+    }
+
+    pub fn package_map_path(self, val: Option<String>) -> Self {
+        Self {
+            package_map_path: val,
+            ..self
+        }
+    }
+
+    pub fn fiducial_ref(self, val: Option<String>) -> Self {
+        Self {
+            fiducial_ref: val,
+            ..self
+        }
+    }
+}
+
+pub fn convert(config: Config) -> io::Result<()> {
+    let mut converter = YY1Converter::try_new(config)?;
+    converter.apply_offset();
     converter.panelize();
     converter.assign_nozzles();
     converter.write_files()

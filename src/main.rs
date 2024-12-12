@@ -6,7 +6,9 @@ mod yy1;
 
 fn cli() -> Command {
     Command::new("yy1")
-        .about("Utility to convert KiCad centroid files into Neoden YY1 pick and place machine format")
+        .about(
+            "Utility to convert KiCad centroid files into Neoden YY1 pick and place machine format",
+        )
         .arg_required_else_help(true)
         .arg(
             arg!(input: [INPUT])
@@ -14,6 +16,12 @@ fn cli() -> Command {
                 .required(true),
         )
         .arg(arg!(output: [OUTPUT]).help("Output file(s)").required(true))
+        .arg(
+            Arg::new("package_map")
+                .long("rename")
+                .short('r')
+                .help("Package rename file"),
+        )
         .arg(
             Arg::new("feeder_config")
                 .long("feeder")
@@ -86,16 +94,16 @@ fn main() -> io::Result<()> {
         .get_one::<String>("offset")
         .map(|offset| parse_offset(offset))
         .transpose()
-        .map_err(io::Error::other)?;
+        .map_err(io::Error::other)?
+        .unwrap_or_default();
     let panel = matches
         .get_one::<String>("panel")
         .map(|panel| parse_panel(panel).map(|panel| panel.explode(matches.get_flag("explode"))))
         .transpose()
-        .map_err(io::Error::other)?;
+        .map_err(io::Error::other)?
+        .unwrap_or_default();
 
-    let fiducial = matches.get_one::<String>("fiducial").cloned();
-
-    convert(
+    let config = Config::new(
         matches
             .get_one::<String>("input")
             .expect("required")
@@ -104,10 +112,13 @@ fn main() -> io::Result<()> {
             .get_one::<String>("output")
             .expect("required")
             .to_owned(),
-        matches.get_one::<String>("feeder_config"),
-        matches.get_one::<String>("nozzle_config"),
-        panel,
-        offset,
-        fiducial,
     )
+    .feeder_config_path(matches.get_one::<String>("feeder_config").cloned())
+    .nozzle_config_path(matches.get_one::<String>("nozzle_config").cloned())
+    .package_map_path(matches.get_one::<String>("package_map").cloned())
+    .fiducial_ref(matches.get_one::<String>("fiducial").cloned())
+    .panel(panel)
+    .offset(offset);
+
+    convert(config)
 }

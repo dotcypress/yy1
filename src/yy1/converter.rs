@@ -1,45 +1,38 @@
-use super::planner::*;
 use super::*;
-use regex::*;
+use package::PackageConverter;
+use planner::*;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, Write};
-use std::path::*;
+use std::path::Path;
 
 pub struct YY1Converter {
     fiducial: (f32, f32),
-    panel: PanelConfig,
+    config: Config,
     steps: Vec<PickAndPlaceStep>,
 }
 
 impl YY1Converter {
-    pub fn try_new(
-        input_path: String,
-        output_path: String,
-        panel: PanelConfig,
-        fiducial_ref: Option<String>,
-        feeder_config_path: Option<&String>,
-        nozzles_config_path: Option<&String>,
-    ) -> io::Result<Self> {
-        let mut reader = csv::Reader::from_reader(File::open(input_path)?);
+    pub fn try_new(config: Config) -> io::Result<Self> {
+        let mut reader = csv::Reader::from_reader(File::open(&config.input_path)?);
         let kicad_records: Result<Vec<KiCadRecord>, csv::Error> = reader.deserialize().collect();
 
         let feeder_config: Option<HashMap<(String, String), FeederConfig>> =
-            if let Some(path) = feeder_config_path {
+            if let Some(path) = &config.feeder_config_path {
                 let mut reader = csv::Reader::from_reader(File::open(path)?);
                 let records: Result<Vec<FeederConfig>, csv::Error> = reader.deserialize().collect();
-                let config = records
+                let feeder_config = records
                     .map_err(|err| io::Error::other(err.to_string()))?
                     .into_iter()
                     .map(|cfg| ((cfg.value.clone(), cfg.package.clone()), cfg))
                     .collect();
-                Some(config)
+                Some(feeder_config)
             } else {
                 None
             };
 
-        let nozzles_config = match nozzles_config_path {
+        let nozzles_config = match &config.nozzle_config_path {
             Some(path) => {
                 let mut reader = csv::Reader::from_reader(File::open(path)?);
                 let records: Result<Vec<NozzleConfig>, csv::Error> = reader.deserialize().collect();
@@ -48,31 +41,22 @@ impl YY1Converter {
             None => vec![None],
         };
 
-        let package_converters = [
-            (
-                Regex::new(r"Crystal_SMD_([0-9]+)[_-].+").unwrap(),
-                r"XTAL-${1}",
-            ),
-            (
-                Regex::new(r"([VWDLTQ]?)F([NP]?)-([0-9]+)[-_].+").unwrap(),
-                r"${1}F${2}-${3}",
-            ),
-            (Regex::new(r"(.+)GA-([0-9]+)[_-].+").unwrap(), r"${1}GA-${2}"),
-            (Regex::new(r"(.+)SO([DP]?)-([0-9]+)[_-]*.*").unwrap(), r"${1}SO${2}-${3}"),
-            (Regex::new(r"LED_([0-9]+)_.+").unwrap(), r"${1}"),
-            (Regex::new(r"[RCLD]_([0-9]+)_.+").unwrap(), r"${1}"),
-        ];
+        let package_map = match &config.package_map_path {
+            Some(path) => {
+                let mut reader = csv::Reader::from_reader(File::open(path)?);
+                let records: Result<Vec<PackageMap>, csv::Error> = reader.deserialize().collect();
+                records?.into_iter().collect()
+            }
+            None => vec![],
+        };
+        let package_converter = PackageConverter::new(package_map);
 
         let components: Vec<ComponentRecord> = kicad_records
             .map_err(|err| io::Error::other(err.to_string()))?
             .into_iter()
             .map(|comp| {
                 let mut comp: ComponentRecord = comp.into();
-                for (re, replace) in &package_converters {
-                    if re.is_match(&comp.package) {
-                        comp.package = re.replace(&comp.package, *replace).into();
-                    }
-                }
+                comp.package = package_converter.rename(&comp.package);
 
                 if comp.value == "Fiducial" {
                     comp.skip = 1;
@@ -116,19 +100,22 @@ impl YY1Converter {
             })
             .collect();
 
-        let fiducial = match fiducial_ref {
+        let fiducial = match &config.fiducial_ref {
             Some(fiducial_ref) => components
                 .iter()
-                .find(|rec| rec.reference == fiducial_ref)
+                .find(|rec| rec.reference == *fiducial_ref)
                 .map(|rec| {
-                    let (columns, rows) = if panel.explode {
-                        ((panel.columns - 1) as f32, (panel.rows - 1) as f32)
+                    let (columns, rows) = if config.panel.explode {
+                        (
+                            (config.panel.columns - 1) as f32,
+                            (config.panel.rows - 1) as f32,
+                        )
                     } else {
                         (0.0, 0.0)
                     };
                     (
-                        rec.position_x + columns * panel.unit_width,
-                        rec.position_y + rows * panel.unit_length,
+                        rec.position_x + columns * config.panel.unit_width,
+                        rec.position_y + rows * config.panel.unit_length,
                     )
                 })
                 .ok_or(io::Error::other("Fiducial not found"))?,
@@ -136,7 +123,7 @@ impl YY1Converter {
         };
 
         let multi_step = nozzles_config.len() > 1;
-        let output_path = Path::new(&output_path);
+        let output_path = Path::new(&config.output_path);
         let mut steps: Vec<PickAndPlaceStep> = nozzles_config
             .into_iter()
             .enumerate()
@@ -181,33 +168,37 @@ impl YY1Converter {
 
         Ok(Self {
             fiducial,
-            panel,
+            config,
             steps,
         })
     }
 
-    pub fn apply_offset(&mut self, offset: (f32, f32)) {
-        self.fiducial = (self.fiducial.0 + offset.0, self.fiducial.1 + offset.1);
+    pub fn apply_offset(&mut self) {
+        // config.offset.unwrap_or((0.0, 0.0))
+        self.fiducial = (
+            self.fiducial.0 + self.config.offset.0,
+            self.fiducial.1 + self.config.offset.1,
+        );
         for step in self.steps.iter_mut() {
             for component in step.components.iter_mut() {
-                component.position_x += offset.0;
-                component.position_y += offset.1;
+                component.position_x += self.config.offset.0;
+                component.position_y += self.config.offset.1;
             }
         }
     }
 
     pub fn panelize(&mut self) {
-        if !self.panel.explode {
+        if !self.config.panel.explode {
             return;
         }
         for step in self.steps.iter_mut() {
             let components = step.components.clone();
             step.components.clear();
-            for col in 0..self.panel.columns {
-                for row in 0..self.panel.rows {
+            for col in 0..self.config.panel.columns {
+                for row in 0..self.config.panel.rows {
                     for mut component in components.iter().cloned() {
-                        let delta_x = col as f32 * self.panel.unit_width;
-                        let delta_y = row as f32 * self.panel.unit_length;
+                        let delta_x = col as f32 * self.config.panel.unit_width;
+                        let delta_y = row as f32 * self.config.panel.unit_length;
                         component.position_x += delta_x;
                         component.position_y += delta_y;
                         component.reference =
@@ -231,7 +222,7 @@ impl YY1Converter {
             let mut nozzle_change = step.nozzle_change.iter().cloned();
             let header = format!(
                 include_str!("header.csv"),
-                self.panel.as_string(),
+                self.config.panel.as_string(),
                 self.fiducial.0,
                 self.fiducial.1,
                 nozzle_change.next().unwrap_or_default().as_string(),
