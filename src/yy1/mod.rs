@@ -96,12 +96,34 @@ pub struct KiCadRecord {
     Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 pub enum Nozzle {
+    /// 0201
+    CN030,
+    /// 0402
     CN040,
+    /// 0402、0603
     CN065,
+    /// 0805、Diodes、1206、1210
     CN100,
+    /// 1206、1210、1812、2010、SOT23、5050
     CN140,
+    /// SOP、SOT89、SOT223、SOT252
     CN220,
+    /// ICs from 5 to 12mm
     CN400,
+    /// ICs bigger than 12mm
+    CN750,
+    /// 3528serices Soft bead
+    YX01,
+    /// High power lamp beads
+    YX02,
+    /// Chips and BGA from 11mm to 17mm BGA
+    YX03,
+    /// Chips and BGA bigger than 17mm
+    YX04,
+    /// 4148 circular diode
+    YX05,
+    /// 3535 ball shape LED (Spherical height 1.4mm, overall height 1.9mm）
+    YX06,
 }
 
 #[derive(Debug, serde::Deserialize)]
