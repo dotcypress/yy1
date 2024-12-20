@@ -69,8 +69,13 @@ impl YY1Converter {
                         comp.pick_height = feeder.pick_height;
                         comp.place_height = feeder.place_height;
                         comp.mount_speed = feeder.mount_speed;
-                        comp.rotation = (comp.rotation + feeder.rotation) % 180.0;
                         comp.mode = feeder.mode;
+                        comp.rotation = match (comp.rotation + feeder.rotation) % 360.0 {
+                            -0.0 => 0.0,
+                            angle if angle <= -180.0 => angle + 360.0,
+                            angle if angle > 180.0 => angle - 360.0,
+                            angle => angle,
+                        };
                         for nozzle_config in &nozzles_config {
                             if nozzle_config
                                 .map(|cfg| cfg.contains(feeder.nozzle))
@@ -174,7 +179,6 @@ impl YY1Converter {
     }
 
     pub fn apply_offset(&mut self) {
-        // config.offset.unwrap_or((0.0, 0.0))
         self.fiducial = (
             self.fiducial.0 + self.config.offset.0,
             self.fiducial.1 + self.config.offset.1,
