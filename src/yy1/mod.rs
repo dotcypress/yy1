@@ -154,6 +154,9 @@ pub struct FeederConfig {
 
     #[serde(rename = "Mode")]
     mode: u8,
+
+    #[serde(rename = "Skip")]
+    skip: u8,
 }
 
 impl From<KiCadRecord> for ComponentRecord {

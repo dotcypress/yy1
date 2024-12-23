@@ -70,6 +70,7 @@ impl YY1Converter {
                         comp.place_height = feeder.place_height;
                         comp.mount_speed = feeder.mount_speed;
                         comp.mode = feeder.mode;
+                        comp.skip = feeder.skip;
                         comp.rotation = match (comp.rotation + feeder.rotation) % 360.0 {
                             -0.0 => 0.0,
                             angle if angle <= -180.0 => angle + 360.0,
