@@ -1,5 +1,5 @@
-use regex::Regex;
 use super::PackageMap;
+use regex::Regex;
 
 pub struct PackageConverter {
     substitutions: Vec<PackageMap>,
@@ -38,7 +38,7 @@ impl PackageConverter {
     pub fn rename(&self, package: &str) -> String {
         for package_map in &self.substitutions {
             if let Some(name) = package_map.rename(package) {
-                return name
+                return name;
             }
         }
         for (re, replace) in &self.package_converters {

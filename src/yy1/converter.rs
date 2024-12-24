@@ -109,8 +109,8 @@ impl YY1Converter {
         let fiducial = match &config.fiducial_ref {
             Some(fiducial_ref) => components
                 .iter()
-                .find(|rec| rec.reference == *fiducial_ref)
-                .map(|rec| {
+                .find(|fid| fid.reference == *fiducial_ref)
+                .map(|fid| {
                     let (columns, rows) = if config.panel.explode {
                         (
                             (config.panel.columns - 1) as f32,
@@ -120,8 +120,8 @@ impl YY1Converter {
                         (0.0, 0.0)
                     };
                     (
-                        rec.position_x + columns * config.panel.unit_width,
-                        rec.position_y + rows * config.panel.unit_length,
+                        fid.position_x + columns * config.panel.unit_width,
+                        fid.position_y + rows * config.panel.unit_length,
                     )
                 })
                 .ok_or(io::Error::other("Fiducial not found"))?,
@@ -136,11 +136,11 @@ impl YY1Converter {
             .map(|(idx, nozzle_config)| {
                 let file_name = output_path
                     .file_stem()
-                    .map(|stem| {
+                    .map(|step| {
                         if multi_step {
-                            format!("{}_{}", stem.to_string_lossy(), idx + 1)
+                            format!("{}_{}", step.to_string_lossy(), idx + 1)
                         } else {
-                            stem.to_string_lossy().into_owned()
+                            step.to_string_lossy().into_owned()
                         }
                     })
                     .unwrap();
@@ -269,7 +269,12 @@ impl PickAndPlaceStep {
                     .cmp(&nozzle_config.is_active(nozzle1))
                 {
                     Ordering::Equal => match nozzle1.cmp(&nozzle2) {
-                        Ordering::Equal => comp1.feeder.cmp(&comp2.feeder),
+                        Ordering::Equal => {
+                            match comp1.place_height.total_cmp(&comp2.place_height) {
+                                Ordering::Equal => comp1.feeder.cmp(&comp2.feeder),
+                                ord => ord,
+                            }
+                        }
                         ord => ord,
                     },
                     ord => ord,
