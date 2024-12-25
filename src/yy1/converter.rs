@@ -268,13 +268,11 @@ impl PickAndPlaceStep {
                     .is_active(nozzle2)
                     .cmp(&nozzle_config.is_active(nozzle1))
                 {
-                    Ordering::Equal => match nozzle1.cmp(&nozzle2) {
-                        Ordering::Equal => {
-                            match comp1.place_height.total_cmp(&comp2.place_height) {
-                                Ordering::Equal => comp1.feeder.cmp(&comp2.feeder),
-                                ord => ord,
-                            }
-                        }
+                    Ordering::Equal => match comp1.place_height.total_cmp(&comp2.place_height) {
+                        Ordering::Equal => match nozzle1.cmp(&nozzle2) {
+                            Ordering::Equal => comp1.feeder.cmp(&comp2.feeder),
+                            ord => ord,
+                        },
                         ord => ord,
                     },
                     ord => ord,
