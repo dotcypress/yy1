@@ -180,14 +180,27 @@ impl YY1Converter {
     }
 
     pub fn apply_offset(&mut self) {
+        let last_ofset = self.config.offset.last().unwrap_or(&(0.0, 0.0));
         self.fiducial = (
-            self.fiducial.0 + self.config.offset.0,
-            self.fiducial.1 + self.config.offset.1,
+            self.fiducial.0 + last_ofset.0,
+            self.fiducial.1 + last_ofset.1,
         );
+
+        let multi_offset = self.config.offset.len() > 1;
         for step in self.steps.iter_mut() {
-            for component in step.components.iter_mut() {
-                component.position_x += self.config.offset.0;
-                component.position_y += self.config.offset.1;
+            let components = step.components.clone();
+            step.components.clear();
+            for (idx, offset) in self.config.offset.iter().enumerate() {
+                for mut component in components.iter().cloned() {
+                    component.position_x += offset.0;
+                    component.position_y += offset.1;
+                    component.reference = if multi_offset {
+                        format!("{0}-{1}", component.reference, idx + 1)
+                    } else {
+                        component.reference
+                    };
+                    step.components.push(component);
+                }
             }
         }
     }

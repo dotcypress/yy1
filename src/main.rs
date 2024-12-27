@@ -38,6 +38,7 @@ fn cli() -> Command {
         .arg(
             Arg::new("offset")
                 .allow_hyphen_values(true)
+                .value_delimiter(',')
                 .long("offset")
                 .short('o')
                 .help("PCB offset"),
@@ -91,8 +92,12 @@ fn parse_panel(panel: &str) -> Result<PanelConfig, String> {
 fn main() -> io::Result<()> {
     let matches = cli().get_matches();
     let offset = matches
-        .get_one::<String>("offset")
-        .map(|offset| parse_offset(offset))
+        .get_many::<String>("offset")
+        .map(|offsets| {
+            offsets
+                .map(|offset| parse_offset(offset))
+                .collect::<Result<Vec<(f32, f32)>, String>>()
+        })
         .transpose()
         .map_err(io::Error::other)?
         .unwrap_or_default();

@@ -306,7 +306,7 @@ pub struct Config {
     input_path: String,
     output_path: String,
     panel: PanelConfig,
-    offset: (f32, f32),
+    offset: Vec<(f32, f32)>,
     feeder_config_path: Option<String>,
     nozzle_config_path: Option<String>,
     package_map_path: Option<String>,
@@ -322,7 +322,7 @@ impl Config {
             nozzle_config_path: None,
             package_map_path: None,
             panel: PanelConfig::default(),
-            offset: (0.0, 0.0),
+            offset: vec![(0.0, 0.0)],
             fiducial_ref: None,
         }
     }
@@ -331,7 +331,7 @@ impl Config {
         Self { panel: val, ..self }
     }
 
-    pub fn offset(self, val: (f32, f32)) -> Self {
+    pub fn offset(self, val: Vec<(f32, f32)>) -> Self {
         Self {
             offset: val,
             ..self
@@ -369,8 +369,8 @@ impl Config {
 
 pub fn convert(config: Config) -> io::Result<()> {
     let mut converter = YY1Converter::try_new(config)?;
-    converter.apply_offset();
     converter.panelize();
+    converter.apply_offset();
     converter.assign_nozzles();
     converter.write_files()
 }
