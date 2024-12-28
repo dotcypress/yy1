@@ -41,7 +41,7 @@ fn cli() -> Command {
                 .value_delimiter(',')
                 .long("offset")
                 .short('o')
-                .help("PCB offset"),
+                .help("PCB offset (x:y)"),
         )
         .arg(
             Arg::new("panel")
@@ -58,20 +58,35 @@ fn cli() -> Command {
         )
         .arg(
             Arg::new("fiducial")
+                .allow_hyphen_values(true)
                 .long("fiducial")
-                .help("Fiducial designator"),
+                .help("Fiducial designator or position"),
         )
 }
 
-fn parse_offset(offset: &str) -> Result<(f32, f32), String> {
+fn parse_offset(offset: &str) -> Result<Position, String> {
     let (x, y) = offset.split_once(':').ok_or("Invalid offset config")?;
-    Ok((
+    Ok(Position::new(
         x.parse().map_err(|_| "Invalid X offset")?,
         y.parse().map_err(|_| "Invalid Y offset")?,
     ))
 }
 
-fn parse_panel(panel: &str) -> Result<PanelConfig, String> {
+fn parse_fiducial(fudicial: &str) -> Result<Fiducial, String> {
+    if fudicial.contains(':') {
+        let (x, y) = fudicial
+            .split_once(':')
+            .ok_or("Invalid fiducial position")?;
+        Ok(Fiducial::Position(Position::new(
+            x.parse().map_err(|_| "Invalid fiducial X position")?,
+            y.parse().map_err(|_| "Invalid fiducial Y position")?,
+        )))
+    } else {
+        Ok(Fiducial::Reference(fudicial.into()))
+    }
+}
+
+fn parse_panel_config(panel: &str) -> Result<PanelConfig, String> {
     let params: Vec<&str> = panel.split(':').collect();
     if params.len() != 4 {
         Err("Invalid panel config".into())
@@ -84,7 +99,7 @@ fn parse_panel(panel: &str) -> Result<PanelConfig, String> {
         if columns < 2 || rows < 2 {
             Err("Invalid panel config".into())
         } else {
-            Ok(PanelConfig::new(false, columns, rows, width, length))
+            Ok(PanelConfig::new(false, columns, rows, Size::new(width, length)))
         }
     }
 }
@@ -96,18 +111,17 @@ fn main() -> io::Result<()> {
         .map(|offsets| {
             offsets
                 .map(|offset| parse_offset(offset))
-                .collect::<Result<Vec<(f32, f32)>, String>>()
+                .collect::<Result<Vec<Position>, String>>()
         })
         .transpose()
         .map_err(io::Error::other)?
         .unwrap_or_default();
     let panel = matches
         .get_one::<String>("panel")
-        .map(|panel| parse_panel(panel).map(|panel| panel.explode(matches.get_flag("explode"))))
+        .map(|panel| parse_panel_config(panel).map(|panel| panel.explode(matches.get_flag("explode"))))
         .transpose()
         .map_err(io::Error::other)?
         .unwrap_or_default();
-
     let config = Config::new(
         matches
             .get_one::<String>("input")
@@ -121,7 +135,13 @@ fn main() -> io::Result<()> {
     .feeder_config_path(matches.get_one::<String>("feeder_config").cloned())
     .nozzle_config_path(matches.get_one::<String>("nozzle_config").cloned())
     .package_map_path(matches.get_one::<String>("package_map").cloned())
-    .fiducial_ref(matches.get_one::<String>("fiducial").cloned())
+    .fiducial(
+        matches
+            .get_one::<String>("fiducial")
+            .map(|fiducial| parse_fiducial(fiducial))
+            .transpose()
+            .map_err(io::Error::other)?,
+    )
     .panel(panel)
     .offset(offset);
 

@@ -8,7 +8,7 @@ use std::io::{self, Write};
 use std::path::Path;
 
 pub struct YY1Converter {
-    fiducial: (f32, f32),
+    fiducial: Position,
     config: Config,
     steps: Vec<PickAndPlaceStep>,
 }
@@ -106,26 +106,27 @@ impl YY1Converter {
             })
             .collect();
 
-        let fiducial = match &config.fiducial_ref {
-            Some(fiducial_ref) => components
+        let fiducial = match &config.fiducial {
+            Some(Fiducial::Position(position)) => position.clone(),
+            Some(Fiducial::Reference(fiducial_ref)) => components
                 .iter()
                 .find(|fid| fid.reference == *fiducial_ref)
                 .map(|fid| {
-                    let (columns, rows) = if config.panel.explode {
-                        (
+                    let panel = if config.panel.explode {
+                        Size::new(
                             (config.panel.columns - 1) as f32,
                             (config.panel.rows - 1) as f32,
                         )
                     } else {
-                        (0.0, 0.0)
+                        Size::zero()
                     };
-                    (
-                        fid.position_x + columns * config.panel.unit_width,
-                        fid.position_y + rows * config.panel.unit_length,
+                    Position::new(
+                        fid.position_x + panel.width * config.panel.size.width,
+                        fid.position_y + panel.height * config.panel.size.height,
                     )
                 })
                 .ok_or(io::Error::other("Fiducial not found"))?,
-            None => (0.0, 0.0),
+            None => Position::zero(),
         };
 
         let multi_step = nozzles_config.len() > 1;
@@ -180,10 +181,15 @@ impl YY1Converter {
     }
 
     pub fn apply_offset(&mut self) {
-        let last_ofset = self.config.offset.last().unwrap_or(&(0.0, 0.0));
-        self.fiducial = (
-            self.fiducial.0 + last_ofset.0,
-            self.fiducial.1 + last_ofset.1,
+        let last_ofset = self
+            .config
+            .offset
+            .last()
+            .cloned()
+            .unwrap_or(Position::zero());
+        self.fiducial = Position::new(
+            self.fiducial.x + last_ofset.x,
+            self.fiducial.y + last_ofset.y,
         );
 
         let multi_offset = self.config.offset.len() > 1;
@@ -192,8 +198,8 @@ impl YY1Converter {
             step.components.clear();
             for (idx, offset) in self.config.offset.iter().enumerate() {
                 for mut component in components.iter().cloned() {
-                    component.position_x += offset.0;
-                    component.position_y += offset.1;
+                    component.position_x += offset.x;
+                    component.position_y += offset.y;
                     component.reference = if multi_offset {
                         format!("{0}-{1}", component.reference, idx + 1)
                     } else {
@@ -215,8 +221,8 @@ impl YY1Converter {
             for col in 0..self.config.panel.columns {
                 for row in 0..self.config.panel.rows {
                     for mut component in components.iter().cloned() {
-                        let delta_x = col as f32 * self.config.panel.unit_width;
-                        let delta_y = row as f32 * self.config.panel.unit_length;
+                        let delta_x = col as f32 * self.config.panel.size.width;
+                        let delta_y = row as f32 * self.config.panel.size.height;
                         component.position_x += delta_x;
                         component.position_y += delta_y;
                         component.reference =
@@ -241,8 +247,8 @@ impl YY1Converter {
             let header = format!(
                 include_str!("header.csv"),
                 self.config.panel.as_string(),
-                self.fiducial.0,
-                self.fiducial.1,
+                self.fiducial.x,
+                self.fiducial.y,
                 nozzle_change.next().unwrap_or_default().as_string(),
                 nozzle_change.next().unwrap_or_default().as_string(),
                 nozzle_change.next().unwrap_or_default().as_string(),

@@ -184,19 +184,58 @@ impl From<KiCadRecord> for ComponentRecord {
 pub struct PanelConfig {
     rows: u8,
     columns: u8,
-    unit_width: f32,
-    unit_length: f32,
+    size: Size,
     explode: bool,
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct Size {
+    width: f32,
+    height: f32,
+}
+
+impl Size {
+    pub fn new(width: f32, height: f32) -> Self {
+        Self { width, height }
+    }
+
+    pub fn zero() -> Self {
+        Self {
+            width: 0.0,
+            height: 0.0,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Position {
+    x: f32,
+    y: f32,
+}
+
+impl Position {
+    pub fn new(x: f32, y: f32) -> Self {
+        Self { x, y }
+    }
+
+    pub fn zero() -> Self {
+        Self { x: 0.0, y: 0.0 }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum Fiducial {
+    Reference(String),
+    Position(Position),
+}
+
 impl PanelConfig {
-    pub fn new(explode: bool, rows: u8, columns: u8, unit_width: f32, unit_length: f32) -> Self {
+    pub fn new(explode: bool, rows: u8, columns: u8, size: Size) -> Self {
         Self {
             explode,
             rows,
             columns,
-            unit_width,
-            unit_length,
+            size,
         }
     }
 
@@ -210,7 +249,7 @@ impl PanelConfig {
         } else {
             format!(
                 "PanelizedPCB,UnitLength,{},UnitWidth,{},Rows,{},Columns,{},",
-                self.unit_length, self.unit_width, self.rows, self.columns,
+                self.size.height, self.size.width, self.rows, self.columns,
             )
         }
     }
@@ -222,8 +261,7 @@ impl Default for PanelConfig {
             explode: false,
             columns: 1,
             rows: 1,
-            unit_width: 0.0,
-            unit_length: 0.0,
+            size: Size::default(),
         }
     }
 }
@@ -306,11 +344,11 @@ pub struct Config {
     input_path: String,
     output_path: String,
     panel: PanelConfig,
-    offset: Vec<(f32, f32)>,
+    offset: Vec<Position>,
     feeder_config_path: Option<String>,
     nozzle_config_path: Option<String>,
     package_map_path: Option<String>,
-    fiducial_ref: Option<String>,
+    fiducial: Option<Fiducial>,
 }
 
 impl Config {
@@ -322,8 +360,8 @@ impl Config {
             nozzle_config_path: None,
             package_map_path: None,
             panel: PanelConfig::default(),
-            offset: vec![(0.0, 0.0)],
-            fiducial_ref: None,
+            offset: vec![Position::zero()],
+            fiducial: None,
         }
     }
 
@@ -331,7 +369,7 @@ impl Config {
         Self { panel: val, ..self }
     }
 
-    pub fn offset(self, val: Vec<(f32, f32)>) -> Self {
+    pub fn offset(self, val: Vec<Position>) -> Self {
         Self {
             offset: val,
             ..self
@@ -359,9 +397,9 @@ impl Config {
         }
     }
 
-    pub fn fiducial_ref(self, val: Option<String>) -> Self {
+    pub fn fiducial(self, val: Option<Fiducial>) -> Self {
         Self {
-            fiducial_ref: val,
+            fiducial: val,
             ..self
         }
     }
