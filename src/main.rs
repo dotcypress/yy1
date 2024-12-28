@@ -99,7 +99,12 @@ fn parse_panel_config(panel: &str) -> Result<PanelConfig, String> {
         if columns < 2 || rows < 2 {
             Err("Invalid panel config".into())
         } else {
-            Ok(PanelConfig::new(false, columns, rows, Size::new(width, length)))
+            Ok(PanelConfig::new(
+                false,
+                columns,
+                rows,
+                Size::new(width, length),
+            ))
         }
     }
 }
@@ -118,7 +123,9 @@ fn main() -> io::Result<()> {
         .unwrap_or_default();
     let panel = matches
         .get_one::<String>("panel")
-        .map(|panel| parse_panel_config(panel).map(|panel| panel.explode(matches.get_flag("explode"))))
+        .map(|panel| {
+            parse_panel_config(panel).map(|panel| panel.explode(matches.get_flag("explode")))
+        })
         .transpose()
         .map_err(io::Error::other)?
         .unwrap_or_default();

@@ -2,8 +2,6 @@
 
 Tiny utility to convert KiCad centroid files into Neoden YY1 pick and place machine format.
 
-🚧 Work in progress 🚧
-
 ## License
 
 Licensed under either of
