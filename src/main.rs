@@ -57,6 +57,13 @@ fn cli() -> Command {
                 .help("Explode panel"),
         )
         .arg(
+            Arg::new("bom")
+                .long("bom")
+                .short('b')
+                .num_args(0)
+                .help("Generate BOM"),
+        )
+        .arg(
             Arg::new("fiducial")
                 .allow_hyphen_values(true)
                 .long("fiducial")
@@ -120,7 +127,7 @@ fn main() -> io::Result<()> {
         })
         .transpose()
         .map_err(io::Error::other)?
-        .unwrap_or_default();
+        .unwrap_or(vec![Position::zero()]);
     let panel = matches
         .get_one::<String>("panel")
         .map(|panel| {
@@ -150,6 +157,7 @@ fn main() -> io::Result<()> {
             .map_err(io::Error::other)?,
     )
     .panel(panel)
+    .bom(matches.get_flag("bom"))
     .offset(offset);
 
     convert(config)

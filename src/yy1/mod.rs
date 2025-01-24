@@ -48,6 +48,9 @@ pub struct ComponentRecord {
 
     #[serde(skip)]
     nozzle: Option<Nozzle>,
+
+    #[serde(skip)]
+    part: String,
 }
 
 impl ComponentRecord {
@@ -67,6 +70,7 @@ impl ComponentRecord {
             mode: 0,
             skip: 1,
             nozzle: None,
+            part: String::default(),
         }
     }
 }
@@ -90,6 +94,18 @@ pub struct KiCadRecord {
 
     #[serde(rename = "Rot")]
     rotation: f32,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct BOMRecord {
+    #[serde(rename = "Part")]
+    part: String,
+
+    #[serde(rename = "Amount")]
+    amount: u32,
+
+    #[serde(rename = "Feeder")]
+    feeder: u8,
 }
 
 #[derive(
@@ -157,6 +173,9 @@ pub struct FeederConfig {
 
     #[serde(rename = "Skip")]
     skip: u8,
+
+    #[serde(rename = "Part")]
+    part: String,
 }
 
 impl From<KiCadRecord> for ComponentRecord {
@@ -176,6 +195,7 @@ impl From<KiCadRecord> for ComponentRecord {
             mode: 0,
             skip: 0,
             nozzle: None,
+            part: String::default(),
         }
     }
 }
@@ -343,6 +363,7 @@ impl PackageMap {
 pub struct Config {
     input_path: String,
     output_path: String,
+    bom: bool,
     panel: PanelConfig,
     offset: Vec<Position>,
     feeder_config_path: Option<String>,
@@ -362,11 +383,19 @@ impl Config {
             panel: PanelConfig::default(),
             offset: vec![Position::zero()],
             fiducial: None,
+            bom: false,
         }
     }
 
     pub fn panel(self, val: PanelConfig) -> Self {
         Self { panel: val, ..self }
+    }
+
+    pub fn bom(self, enable: bool) -> Self {
+        Self {
+            bom: enable,
+            ..self
+        }
     }
 
     pub fn offset(self, val: Vec<Position>) -> Self {

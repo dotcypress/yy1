@@ -71,6 +71,7 @@ impl YY1Converter {
                         comp.mount_speed = feeder.mount_speed;
                         comp.mode = feeder.mode;
                         comp.skip = feeder.skip;
+                        comp.part = feeder.part.clone();
                         comp.rotation = match (comp.rotation + feeder.rotation) % 360.0 {
                             -0.0 => 0.0,
                             angle if angle <= -180.0 => angle + 360.0,
@@ -158,6 +159,44 @@ impl YY1Converter {
                 }
             })
             .collect();
+
+        if config.bom {
+            let mut parts: HashMap<String, BOMRecord> = HashMap::new();
+
+            for component in components.iter() {
+                if component.part.is_empty() {
+                    continue;
+                }
+                parts
+                    .entry(component.part.clone())
+                    .and_modify(|rec| {
+                        rec.amount += 1;
+                    })
+                    .or_insert(BOMRecord {
+                        feeder: component.feeder,
+                        part: component.part.clone(),
+                        amount: 1,
+                    });
+            }
+
+            let file_name = output_path
+                .file_stem()
+                .map(|step| format!("{}_bom", step.to_string_lossy()))
+                .unwrap();
+            let file_path: String = output_path
+                .with_file_name(file_name)
+                .with_extension("csv")
+                .to_string_lossy()
+                .into();
+
+            let mut bom_writer = csv::WriterBuilder::default()
+                .terminator(csv::Terminator::CRLF)
+                .from_writer(File::create(&file_path)?);
+            for part in parts.values() {
+                bom_writer.serialize(part)?
+            }
+            bom_writer.flush()?;
+        }
 
         for comp in components.iter().filter(|comp| comp.skip == 0) {
             if let Some(nozzle) = comp.nozzle {
