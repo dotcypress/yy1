@@ -78,6 +78,12 @@ impl YY1Converter {
                             angle if angle > 180.0 => angle - 360.0,
                             angle => angle,
                         };
+                        if feeder.skip == 1 {
+                            eprintln!(
+                                "Warning: Feeder #{} is empty. Component: {} - {}. Skipping...",
+                                comp.feeder, comp.value, comp.package
+                            );
+                        }
                         for nozzle_config in &nozzles_config {
                             if nozzle_config
                                 .map(|cfg| cfg.contains(feeder.nozzle))
