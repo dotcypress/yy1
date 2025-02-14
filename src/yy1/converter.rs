@@ -285,6 +285,17 @@ impl YY1Converter {
         }
     }
 
+    pub fn apply_skip(&mut self) {
+        let skip_until = self.config.skip_until.unwrap_or(0);
+        for step in self.steps.iter_mut() {
+            for (idx, comp) in step.components.iter_mut().enumerate() {
+                if skip_until > idx {
+                    comp.skip = 1;
+                }
+            }
+        }
+    }
+
     pub fn write_files(&self) -> io::Result<()> {
         for step in &self.steps {
             let mut writer = File::create(&step.file_path)?;

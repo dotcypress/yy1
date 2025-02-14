@@ -64,6 +64,12 @@ fn cli() -> Command {
                 .help("Generate BOM"),
         )
         .arg(
+            Arg::new("skip")
+                .short('s')
+                .long("skip")
+                .help("Skip until component number"),
+        )
+        .arg(
             Arg::new("fiducial")
                 .allow_hyphen_values(true)
                 .long("fiducial")
@@ -153,6 +159,13 @@ fn main() -> io::Result<()> {
         matches
             .get_one::<String>("fiducial")
             .map(|fiducial| parse_fiducial(fiducial))
+            .transpose()
+            .map_err(io::Error::other)?,
+    )
+    .skip_until(
+        matches
+            .get_one::<String>("skip")
+            .map(|val| val.parse())
             .transpose()
             .map_err(io::Error::other)?,
     )

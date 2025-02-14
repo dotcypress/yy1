@@ -56,19 +56,19 @@ pub struct ComponentRecord {
 impl ComponentRecord {
     pub fn placeholder() -> Self {
         Self {
-            reference: "PH".into(),
-            value: "Placeholder".into(),
-            package: "Placeholder".into(),
-            position_x: 0.0,
-            position_y: 0.0,
+            reference: "NC".into(),
+            value: "NC".into(),
+            package: "NozzleChange".into(),
+            position_x: 240.0,
+            position_y: 115.0,
             rotation: 0.0,
             head: 0,
-            feeder: 0,
-            mount_speed: 0,
-            pick_height: 0.0,
-            place_height: 0.0,
+            feeder: 80,
+            mount_speed: 100,
+            pick_height: 15.0,
+            place_height: 15.0,
             mode: 0,
-            skip: 1,
+            skip: 0,
             nozzle: None,
             part: String::default(),
         }
@@ -365,6 +365,7 @@ pub struct Config {
     output_path: String,
     bom: bool,
     panel: PanelConfig,
+    skip_until: Option<usize>,
     offset: Vec<Position>,
     feeder_config_path: Option<String>,
     nozzle_config_path: Option<String>,
@@ -380,10 +381,18 @@ impl Config {
             feeder_config_path: None,
             nozzle_config_path: None,
             package_map_path: None,
+            skip_until: None,
             panel: PanelConfig::default(),
             offset: vec![Position::zero()],
             fiducial: None,
             bom: false,
+        }
+    }
+
+    pub fn skip_until(self, val: Option<usize>) -> Self {
+        Self {
+            skip_until: val,
+            ..self
         }
     }
 
@@ -439,5 +448,6 @@ pub fn convert(config: Config) -> io::Result<()> {
     converter.panelize();
     converter.apply_offset();
     converter.assign_nozzles();
+    converter.apply_skip();
     converter.write_files()
 }
