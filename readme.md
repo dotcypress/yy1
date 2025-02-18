@@ -1,6 +1,32 @@
 # YY1
 
-Tiny utility to convert KiCad centroid files into Neoden YY1 pick and place machine format.
+Utility to convert KiCad centroid files into Neoden YY1 pick and place machine format
+
+## Installation
+
+`cargo install yy1`
+
+## Usage
+
+```
+yy1 [OPTIONS] <INPUT> <OUTPUT>
+
+Arguments:
+  <INPUT>   KiCad placement file
+  <OUTPUT>  Output file(s)
+
+Options:
+  -r, --rename <package_map>    Package rename file
+  -f, --feeder <feeder_config>  Feeder config file
+  -n, --nozzle <nozzle_config>  Nozzle config file
+  -o, --offset <offset>         PCB offset (x:y)
+  -p, --panel <panel>           Panel config (rows:columns:width:length)
+  -e, --explode                 Explode panel
+  -b, --bom                     Generate BOM
+  -s, --skip <skip>             Skip until component number
+      --fiducial <fiducial>     Fiducial designator or position
+  -h, --help                    Print help
+```
 
 ## License
 

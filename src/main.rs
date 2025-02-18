@@ -142,36 +142,33 @@ fn main() -> io::Result<()> {
         .transpose()
         .map_err(io::Error::other)?
         .unwrap_or_default();
-    let config = Config::new(
-        matches
-            .get_one::<String>("input")
-            .expect("required")
-            .to_owned(),
-        matches
-            .get_one::<String>("output")
-            .expect("required")
-            .to_owned(),
-    )
-    .feeder_config_path(matches.get_one::<String>("feeder_config").cloned())
-    .nozzle_config_path(matches.get_one::<String>("nozzle_config").cloned())
-    .package_map_path(matches.get_one::<String>("package_map").cloned())
-    .fiducial(
-        matches
-            .get_one::<String>("fiducial")
-            .map(|fiducial| parse_fiducial(fiducial))
-            .transpose()
-            .map_err(io::Error::other)?,
-    )
-    .skip_until(
-        matches
-            .get_one::<String>("skip")
-            .map(|val| val.parse())
-            .transpose()
-            .map_err(io::Error::other)?,
-    )
-    .panel(panel)
-    .bom(matches.get_flag("bom"))
-    .offset(offset);
+    let input = matches
+        .get_one::<String>("input")
+        .expect("required")
+        .to_owned();
+    let output = matches
+        .get_one::<String>("output")
+        .expect("required")
+        .to_owned();
+    let fiducial = matches
+        .get_one::<String>("fiducial")
+        .map(|fiducial| parse_fiducial(fiducial))
+        .transpose()
+        .map_err(io::Error::other)?;
+    let skip_until = matches
+        .get_one::<String>("skip")
+        .map(|val| val.parse())
+        .transpose()
+        .map_err(io::Error::other)?;
+    let config = Config::new(input, output)
+        .feeder_config_path(matches.get_one::<String>("feeder_config").cloned())
+        .nozzle_config_path(matches.get_one::<String>("nozzle_config").cloned())
+        .package_map_path(matches.get_one::<String>("package_map").cloned())
+        .fiducial(fiducial)
+        .skip_until(skip_until)
+        .panel(panel)
+        .bom(matches.get_flag("bom"))
+        .offset(offset);
 
     convert(config)
 }
