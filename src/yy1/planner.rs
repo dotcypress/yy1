@@ -147,8 +147,9 @@ impl Planner {
         self.nozzle_history
             .into_iter()
             .rev()
-            .map(|nozzle_change| NozzleChange {
-                before_component: self.component_index,
+            .enumerate()
+            .map(|(offset, nozzle_change)| NozzleChange {
+                before_component: self.component_index + offset,
                 pickup_station: nozzle_change.drop_station,
                 drop_station: nozzle_change.pickup_station,
                 ..nozzle_change

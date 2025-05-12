@@ -374,8 +374,8 @@ impl PickAndPlaceStep {
             }
 
             let revert_nozzles = planner.finalize();
-            if !revert_nozzles.is_empty() {
-                self.nozzle_change.extend(revert_nozzles);
+            for nozzle_change in revert_nozzles {
+                self.nozzle_change.push(nozzle_change);
                 self.components.push(ComponentRecord::placeholder());
             }
         }
