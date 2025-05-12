@@ -226,16 +226,18 @@ impl YY1Converter {
     }
 
     pub fn apply_offset(&mut self) {
-        let last_ofset = self
-            .config
-            .offset
-            .last()
-            .cloned()
-            .unwrap_or(Position::zero());
-        self.fiducial = Position::new(
-            self.fiducial.x + last_ofset.x,
-            self.fiducial.y + last_ofset.y,
-        );
+        if !self.fiducial.is_zero() {
+            let last_ofset = self
+                .config
+                .offset
+                .last()
+                .cloned()
+                .unwrap_or(Position::zero());
+            self.fiducial = Position::new(
+                self.fiducial.x + last_ofset.x,
+                self.fiducial.y + last_ofset.y,
+            );
+        }
 
         let multi_offset = self.config.offset.len() > 1;
         for step in self.steps.iter_mut() {
