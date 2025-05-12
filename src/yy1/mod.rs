@@ -96,7 +96,7 @@ pub struct KiCadRecord {
     rotation: f32,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct BOMRecord {
     #[serde(rename = "Part")]
     part: String,

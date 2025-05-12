@@ -198,7 +198,9 @@ impl YY1Converter {
             let mut bom_writer = csv::WriterBuilder::default()
                 .terminator(csv::Terminator::CRLF)
                 .from_writer(File::create(&file_path)?);
-            for part in parts.values() {
+            let mut bom: Vec<BOMRecord> = parts.values().cloned().collect();
+            bom.sort_by(|a, b| a.part.cmp(&b.part));
+            for part in bom {
                 bom_writer.serialize(part)?
             }
             bom_writer.flush()?;
