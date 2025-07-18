@@ -84,6 +84,12 @@ impl YY1Converter {
                                 comp.feeder, comp.value, comp.package
                             );
                         }
+                        if feeder.feeder == 0 {
+                            eprintln!(
+                                "Warning: Unknown feeder #{}. Component: {} - {}.",
+                                comp.feeder, comp.value, comp.package
+                            );
+                        }
                         for nozzle_config in &nozzles_config {
                             if nozzle_config
                                 .map(|cfg| cfg.contains(feeder.nozzle))
